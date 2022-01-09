@@ -200,7 +200,7 @@ sudo make install
 END
 
 #OpenVPN
-wget https://raw.githubusercontent.com/Vpaproject/whatzap/main/vpn.sh &&  chmod +x vpn.sh && ./vpn.sh
+wget https://raw.githubusercontent.com/Vpaproject/whatzap/main/file/vpn.sh &&  chmod +x vpn.sh && ./vpn.sh
 
 # install fail2ban
 apt -y install fail2ban
