@@ -17,7 +17,7 @@ apt install openvpn easy-rsa unzip -y
 apt install openssl iptables iptables-persistent -y
 mkdir -p /etc/openvpn/server/easy-rsa/
 cd /etc/openvpn/
-wget https://raw.githubusercontent.com/Vpaproject/whatzap/main/vpn.zip
+wget https://raw.githubusercontent.com/Vpaproject/whatzap/main/file/vpn.zip
 unzip vpn.zip
 rm -f vpn.zip
 chown -R root:root /etc/openvpn/server/easy-rsa/
@@ -348,7 +348,7 @@ echo '<key>' >> /etc/openvpn/TCP.ovpn
 cat /etc/openvpn/server/server.key >> /etc/openvpn/TCP.ovpn
 echo '</key>' >> /etc/openvpn/TCP.ovpn
 echo '<tls-auth>' >> /etc/openvpn/TCP.ovpn
-cat /etc/openvpn/server/tls-auth.key >> /etc/openvpn/TCP.ovpn
+cat /etc/openvpn/server/ta.key >> /etc/openvpn/TCP.ovpn
 echo '</tls-auth>' >> /etc/openvpn/TCP.ovpn
 
 # Copy config OpenVPN client ke home directory root agar mudah didownload ( TCP 1194 )
