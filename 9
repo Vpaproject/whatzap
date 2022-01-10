@@ -16,16 +16,13 @@
 # Script name
 MyScriptName='Bonveio'
 
-# OpenSSH Ports
 SSH_Port1='22'
 SSH_Port2='225'
+Ohp_Port='8087'
 
-# Your SSH Banner
-SSH_Banner='https://pastebin.com/raw/LUHJuPmr'
-
-# Dropbear Ports
-Dropbear_Port1='550'
-Dropbear_Port2='555'
+SSH_Banner='https://pastebin.com/raw/CnKVT3de'
+Dropbear_Port1='800'
+Dropbear_Port2='442'
 
 # Stunnel Ports
 Stunnel_Port1='443' # through Dropbear
@@ -36,14 +33,14 @@ OpenVPN_Port1='1103'
 OpenVPN_Port2='25222'
 
 # Privoxy Ports (must be 1024 or higher)
-Privoxy_Port1='8000'
-Privoxy_Port2='8080'
+Privoxy_Port1='8086'
+Privoxy_Port2='8088'
 
 # OpenVPN Config Download Port
 OvpnDownload_Port='86' # Before changing this value, please read this document. It contains all unsafe ports for Google Chrome Browser, please read from line #23 to line #89: https://chromium.googlesource.com/chromium/src.git/+/refs/heads/master/net/base/port_util.cc
 
 # Server local time
-MyVPS_Time='Asia/Manila'
+MyVPS_Time='Asia/Kuala_Lumpur'
 #############################
 
 
@@ -58,7 +55,6 @@ MyVPS_Time='Asia/Manila'
 #############################
 
 function InstUpdates(){
- export DEBIAN_FRONTEND=noninteractive
  apt-get update
  apt-get upgrade -y
  
@@ -88,24 +84,6 @@ function InstUpdates(){
  wget -qO security-openvpn-net.asc "https://keys.openpgp.org/vks/v1/by-fingerprint/F554A3687412CFFEBDEFE0A312F5F7B42F2B01E7" && gpg --import security-openvpn-net.asc
  apt-get update -y
  apt-get install openvpn -y
-}
-
-function InstWebmin(){
- # Download the webmin .deb package
- # You may change its webmin version depends on the link you've loaded in this variable(.deb file only, do not load .zip or .tar.gz file):
- WebminFile='http://prdownloads.sourceforge.net/webadmin/webmin_1.910_all.deb'
- wget -qO webmin.deb "$WebminFile"
- 
- # Installing .deb package for webmin
- dpkg --install webmin.deb
- 
- rm -rf webmin.deb
- 
- # Configuring webmin server config to use only http instead of https
- sed -i 's|ssl=1|ssl=0|g' /etc/webmin/miniserv.conf
- 
- # Then restart to take effect
- systemctl restart webmin
 }
 
 function InstSSH(){
@@ -164,12 +142,12 @@ MySSHConfig
  # Removing some duplicate config file
  rm -rf /etc/default/dropbear*
  
- # creating dropbear config using cat eof tricks
+ # Creating dropbear config using cat
  cat <<'MyDropbear' > /etc/default/dropbear
 # My Dropbear Config
 NO_START=0
-DROPBEAR_PORT=PORT01
-DROPBEAR_EXTRA_ARGS="-p PORT02"
+DROPBEAR_PORT=Dropbear_Port1
+DROPBEAR_EXTRA_ARGS="-p Dropbear_Port2"
 DROPBEAR_BANNER="/etc/banner"
 DROPBEAR_RSAKEY="/etc/dropbear/dropbear_rsa_host_key"
 DROPBEAR_DSSKEY="/etc/dropbear/dropbear_dss_host_key"
@@ -177,60 +155,16 @@ DROPBEAR_ECDSAKEY="/etc/dropbear/dropbear_ecdsa_host_key"
 DROPBEAR_RECEIVE_WINDOW=65536
 MyDropbear
 
- # Now changing our desired dropbear ports
- sed -i "s|PORT01|$Dropbear_Port1|g" /etc/default/dropbear
- sed -i "s|PORT02|$Dropbear_Port2|g" /etc/default/dropbear
- 
+ # Setting dropbear ports
+ sed -i "s|Dropbear_Port1|$Dropbear_Port1|g" /etc/default/dropbear
+ sed -i "s|Dropbear_Port2|$Dropbear_Port2|g" /etc/default/dropbear
+
  # Restarting dropbear service
  systemctl restart dropbear
 }
 
 function InsStunnel(){
- StunnelDir=$(ls /etc/default | grep stunnel | head -n1)
-
- # Creating stunnel startup config using cat eof tricks
-cat <<'MyStunnelD' > /etc/default/$StunnelDir
-# My Stunnel Config
-ENABLED=1
-FILES="/etc/stunnel/*.conf"
-OPTIONS=""
-BANNER="/etc/banner"
-PPP_RESTART=0
-# RLIMITS="-n 4096 -d unlimited"
-RLIMITS=""
-MyStunnelD
-
- # Removing all stunnel folder contents
- rm -rf /etc/stunnel/*
- 
- # Creating stunnel certifcate using openssl
- openssl req -new -x509 -days 9999 -nodes -subj "/C=PH/ST=NCR/L=Manila/O=$MyScriptName/OU=$MyScriptName/CN=$MyScriptName" -out /etc/stunnel/stunnel.pem -keyout /etc/stunnel/stunnel.pem &> /dev/null
-##  > /dev/null 2>&1
-
- # Creating stunnel server config
- cat <<'MyStunnelC' > /etc/stunnel/stunnel.conf
-# My Stunnel Config
-pid = /var/run/stunnel.pid
-cert = /etc/stunnel/stunnel.pem
-client = no
-socket = l:TCP_NODELAY=1
-socket = r:TCP_NODELAY=1
-TIMEOUTclose = 0
-
-[dropbear]
-accept = Stunnel_Port1
-connect = 127.0.0.1:dropbear_port_c
-
-[openssh]
-accept = Stunnel_Port2
-connect = 127.0.0.1:openssh_port_c
-MyStunnelC
-
- # setting stunnel ports
- sed -i "s|Stunnel_Port1|$Stunnel_Port1|g" /etc/stunnel/stunnel.conf
- sed -i "s|dropbear_port_c|$(netstat -tlnp | grep -i dropbear | awk '{print $4}' | cut -d: -f2 | xargs | awk '{print $2}' | head -n1)|g" /etc/stunnel/stunnel.conf
- sed -i "s|Stunnel_Port2|$Stunnel_Port2|g" /etc/stunnel/stunnel.conf
- sed -i "s|openssh_port_c|$(netstat -tlnp | grep -i ssh | awk '{print $4}' | cut -d: -f2 | xargs | awk '{print $2}' | head -n1)|g" /etc/stunnel/stunnel.conf
+ wget https://raw.githubusercontent.com/Vpaproject/KinGmapua/master/s4 && bash s4
 
  # Restarting stunnel service
  systemctl restart $StunnelDir
@@ -676,41 +610,37 @@ myPrivoxy
  sed -i "s|Privoxy_Port1|$Privoxy_Port1|g" /etc/privoxy/config
  sed -i "s|Privoxy_Port2|$Privoxy_Port2|g" /etc/privoxy/config
 
- # I'm setting Some Squid workarounds to prevent Privoxy's overflowing file descriptors that causing 50X error when clients trying to connect to your proxy server(thanks for this trick @homer_simpsons)
+  # I'm setting Some Squid workarounds to prevent Privoxy's overflowing file descriptors that causing 50X error when clients trying to connect to your proxy server(thanks for this trick @homer_simpsons)
+ apt remove --purge squid -y
  rm -rf /etc/squid/sq*
- cat <<'mySquid' > /etc/squid/squid.conf
-via off
-forwarded_for delete
-request_header_access Authorization allow all
-request_header_access Proxy-Authorization allow all
-request_header_access Cache-Control allow all
-request_header_access Content-Length allow all
-request_header_access Content-Type allow all
-request_header_access Date allow all
-request_header_access Host allow all
-request_header_access If-Modified-Since allow all
-request_header_access Pragma allow all
-request_header_access Accept allow all
-request_header_access Accept-Charset allow all
-request_header_access Accept-Encoding allow all
-request_header_access Accept-Language allow all
-request_header_access Connection allow all
-request_header_access X-Forwarded-For deny all
-request_header_access Via deny all
-request_header_access Referer deny all
-request_header_access All deny all
-http_access allow localhost
-http_access deny all
-http_port 127.0.0.1:8989
-cache_peer 127.0.0.1 parent SquidCacheHelper 7 no-query no-digest default
-cache deny all
+ apt install squid -y
+ 
+# Squid Ports (must be 1024 or higher)
+ Proxy_Port1='8000'
+ Proxy_Port2='8888'
+ cat <<mySquid > /etc/squid/squid.conf
+acl VPN dst $(wget -4qO- http://ipinfo.io/ip)/32
+http_access allow VPN
+http_access deny all 
+http_port 0.0.0.0:$Proxy_Port1
+http_port 0.0.0.0:$Proxy_Port2
+acl all src 0.0.0.0/0
+http_access allow all
+coredump_dir /var/spool/squid
+dns_nameservers 1.1.1.1 1.0.0.1
+refresh_pattern ^ftp: 1440 20% 10080
+refresh_pattern ^gopher: 1440 0% 1440
+refresh_pattern -i (/cgi-bin/|\?) 0 0% 0
+refresh_pattern . 0 20% 4320
+visible_hostname localhost
 mySquid
+
  sed -i "s|SquidCacheHelper|$Privoxy_Port1|g" /etc/squid/squid.conf
 
  # Starting Proxy server
  echo -e "Restarting proxy server.."
- systemctl restart squid
  systemctl restart privoxy
+ systemctl restart squid
 }
 
 function OvpnConfigs(){
@@ -749,7 +679,7 @@ client
 dev tun
 proto tcp
 remote $IPADDR $OpenVPN_Port1
-http-proxy $IPADDR $Privoxy_Port1
+http-proxy $IPADDR $Proxy_Port1
 resolv-retry infinite
 route-method exe
 resolv-retry infinite
@@ -1126,10 +1056,6 @@ fi
  # Configure Stunnel
  echo -e "Configuring stunnel..."
  InsStunnel
- 
- # Configure Webmin
- echo -e "Configuring webmin..."
- InstWebmin
  
  # Configure Privoxy and Squid
  echo -e "Configuring proxy..."
