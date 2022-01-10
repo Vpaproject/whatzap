@@ -1,81 +1,29 @@
 #!/bin/bash
-# Debian 9 and 10 VPS Installer
-# Script by Bonveio Abitona
-# 
-# Illegal selling and redistribution of this script is strictly prohibited
-# Please respect author's Property
-# Binigay sainyo ng libre, ipamahagi nyo rin ng libre.
-#
-# 
-# Big shoutout nga pala kay 'Simon Gucaban' for maliciously decrypting some of my public scripts(kasama itong debian ko), Since the encryptor itself cant be redone this script securely, plus hindi sya nakipag cooperate about encryption process ng script to prevent malicious decryption again, i've decided to end this script open source(baka ung iba i oopen source ko nadin), wag nyo ko sisihin kapag dumami script resellers(why i hate some script resellers? they just remodifying/templating public scripts with shitty features then adding a price on it), di ko na kasalanan yan, kasalanan yan nung nagbanta sa security ng script at hindi nakipagcooperate sana for encryption improvement. Dami ko pa naman sana gusto pang idagdag sa script na to and kahit ung sa iba(kahit kapos ako sa time, pinipilit ko parin gumawa). Until today, this script is `not ensurely` providing updates and upgrades (maybe im not updating this anymore), after the decrypting incident, tinamad nako gumawa ng bash script, i think bash scripting is a waste of time dahil sa mga taong kagaya ni 'Simon Gucaban' na everytime pwede silip silipin ung codes inside the shell scripts then experimenting himself to reproduce or either use ung nakita nya as advantage of his own script(kumbaga may laging nagmamasid sayo). I know bash is not secure itself but the time-consuming i've used to research "bug fixes/workaround codes" is a big deal to me. Sa kabila ng nakakapanghinayang na incident na to, im still contributing to any 'linux related/script related' discussions inside PHCorner. And trying to guide sa mga vps user na nahihirapan about vps'es nila for configuration.
-#
+MyScriptName='KinGmapua'
 
-#############################
-#############################
-# Variables (Can be changed depends on your preferred values)
-# Script name
-MyScriptName='Bonveio'
-
+# OpenSSH Ports
 SSH_Port1='22'
 SSH_Port2='225'
 Ohp_Port='8087'
-
 SSH_Banner='https://pastebin.com/raw/CnKVT3de'
 Dropbear_Port1='800'
 Dropbear_Port2='442'
-
-# Stunnel Ports
-Stunnel_Port1='443' # through Dropbear
-Stunnel_Port2='444' # through OpenSSH
-
-# OpenVPN Ports
+Stunnel_Port1='143'
+Stunnel_Port2='144'
 OpenVPN_Port1='1103'
 OpenVPN_Port2='25222'
-
-# Privoxy Ports (must be 1024 or higher)
-Privoxy_Port1='8086'
-Privoxy_Port2='8088'
-
-# OpenVPN Config Download Port
-OvpnDownload_Port='86' # Before changing this value, please read this document. It contains all unsafe ports for Google Chrome Browser, please read from line #23 to line #89: https://chromium.googlesource.com/chromium/src.git/+/refs/heads/master/net/base/port_util.cc
-
+OvpnDownload_Port='86'
 # Server local time
 MyVPS_Time='Asia/Kuala_Lumpur'
 #############################
 
-
-#############################
-#############################
-## All function used for this script
-#############################
-## WARNING: Do not modify or edit anything
-## if you did'nt know what to do.
-## This part is too sensitive.
-#############################
-#############################
-
-function InstUpdates(){
  apt-get update
  apt-get upgrade -y
- 
- # Removing some firewall tools that may affect other services
- apt-get remove --purge ufw firewalld -y
-
- 
- # Installing some important machine essentials
  apt-get install nano wget curl zip unzip tar gzip p7zip-full bc rc openssl cron net-tools dnsutils dos2unix screen bzip2 ccrypt -y
- 
- # Now installing all our wanted services
  apt-get install dropbear stunnel4 privoxy ca-certificates nginx ruby apt-transport-https lsb-release squid screenfetch -y
-
- # Installing all required packages to install Webmin
  apt-get install perl libnet-ssleay-perl openssl libauthen-pam-perl libpam-runtime libio-pty-perl apt-show-versions python dbus libxml-parser-perl -y
- apt-get install shared-mime-info -y
- 
- # Installing a text colorizer
+ apt-get install shared-mime-info jq -y
  gem install lolcat
-
- # Trying to remove obsolette packages after installation
  apt-get autoremove -y
  
  # Installing OpenVPN by pulling its repository inside sources.list file 
@@ -84,7 +32,6 @@ function InstUpdates(){
  wget -qO security-openvpn-net.asc "https://keys.openpgp.org/vks/v1/by-fingerprint/F554A3687412CFFEBDEFE0A312F5F7B42F2B01E7" && gpg --import security-openvpn-net.asc
  apt-get update -y
  apt-get install openvpn -y
-}
 
 function InstSSH(){
  # Removing some duplicated sshd server configs
@@ -573,44 +520,7 @@ fi
 }
 
 function InsProxy(){
- # Removing Duplicate privoxy config
- rm -rf /etc/privoxy/config*
- 
- # Creating Privoxy server config using cat eof tricks
- cat <<'myPrivoxy' > /etc/privoxy/config
-# My Privoxy Server Config
-user-manual /usr/share/doc/privoxy/user-manual
-confdir /etc/privoxy
-logdir /var/log/privoxy
-filterfile default.filter
-logfile logfile
-listen-address 0.0.0.0:Privoxy_Port1
-listen-address 0.0.0.0:Privoxy_Port2
-toggle 1
-enable-remote-toggle 0
-enable-remote-http-toggle 0
-enable-edit-actions 0
-enforce-blocks 0
-buffer-limit 4096
-enable-proxy-authentication-forwarding 1
-forwarded-connect-retries 1
-accept-intercepted-requests 1
-allow-cgi-request-crunching 1
-split-large-forms 0
-keep-alive-timeout 5
-tolerate-pipelining 1
-socket-timeout 300
-permit-access 0.0.0.0/0 IP-ADDRESS
-myPrivoxy
-
- # Setting machine's IP Address inside of our privoxy config(security that only allows this machine to use this proxy server)
- sed -i "s|IP-ADDRESS|$IPADDR|g" /etc/privoxy/config
- 
- # Setting privoxy ports
- sed -i "s|Privoxy_Port1|$Privoxy_Port1|g" /etc/privoxy/config
- sed -i "s|Privoxy_Port2|$Privoxy_Port2|g" /etc/privoxy/config
-
-  # I'm setting Some Squid workarounds to prevent Privoxy's overflowing file descriptors that causing 50X error when clients trying to connect to your proxy server(thanks for this trick @homer_simpsons)
+ # I'm setting Some Squid workarounds to prevent Privoxy's overflowing file descriptors that causing 50X error when clients trying to connect to your proxy server(thanks for this trick @homer_simpsons)
  apt remove --purge squid -y
  rm -rf /etc/squid/sq*
  apt install squid -y
@@ -624,8 +534,6 @@ http_access allow VPN
 http_access deny all 
 http_port 0.0.0.0:$Proxy_Port1
 http_port 0.0.0.0:$Proxy_Port2
-acl all src 0.0.0.0/0
-http_access allow all
 coredump_dir /var/spool/squid
 dns_nameservers 1.1.1.1 1.0.0.1
 refresh_pattern ^ftp: 1440 20% 10080
@@ -679,7 +587,7 @@ client
 dev tun
 proto tcp
 remote $IPADDR $OpenVPN_Port1
-http-proxy $IPADDR $Proxy_Port1
+http-proxy $(curl -s http://ipinfo.io/ip || wget -q http://ipinfo.io/ip) $Proxy_Port1
 resolv-retry infinite
 route-method exe
 resolv-retry infinite
@@ -895,9 +803,9 @@ cat <<'mySiteOvpn' > /var/www/openvpn/index.html
 <!DOCTYPE html>
 <html lang="en">
 
-<!-- Simple OVPN Download site by Bonveio Abitona -->
+<!-- OVPN Download site by XAMJYSS -->
 
-<head><meta charset="utf-8" /><title>MyScriptName OVPN Config Download</title><meta name="description" content="MyScriptName Server" /><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" /><meta name="theme-color" content="#000000" /><link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css"><link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet"><link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.8.3/css/mdb.min.css" rel="stylesheet"></head><body><div class="container justify-content-center" style="margin-top:9em;margin-bottom:5em;"><div class="col-md"><div class="view"><img src="https://openvpn.net/wp-content/uploads/openvpn.jpg" class="card-img-top"><div class="mask rgba-white-slight"></div></div><div class="card"><div class="card-body"><h5 class="card-title">Config List</h5><br /><ul class="list-group"><li class="list-group-item justify-content-between align-items-center" style="margin-bottom:1em;"><p>For Globe/TM <span class="badge light-blue darken-4">Android/iOS</span><br /><small> For EZ/GS Promo with WNP,SNS,FB and IG freebies</small></p><a class="btn btn-outline-success waves-effect btn-sm" href="http://IP-ADDRESS:NGINXPORT/tcp.ovpn" style="float:right;"><i class="fa fa-download"></i> Download</a></li><li class="list-group-item justify-content-between align-items-center" style="margin-bottom:1em;"><p>For Globe/TM <span class="badge light-blue darken-4">PC/Modem</span><br /><small> For EZ/GS Promo with WNP,SNS,FB and IG freebies</small></p><a class="btn btn-outline-success waves-effect btn-sm" href="http://IP-ADDRESS:NGINXPORT/udp.ovpn" style="float:right;"><i class="fa fa-download"></i> Download</a></li><li class="list-group-item justify-content-between align-items-center" style="margin-bottom:1em;"><p>For Sun <span class="badge light-blue darken-4">Android/iOS/PC/Modem</span><br /><small> For TU Promos</small></p><a class="btn btn-outline-success waves-effect btn-sm" href="http://IP-ADDRESS:NGINXPORT/ssl.ovpn" style="float:right;"><i class="fa fa-download"></i> Download</a></li><li class="list-group-item justify-content-between align-items-center" style="margin-bottom:1em;"><p>For Sun <span class="badge light-blue darken-4">Modem</span><br /><small> Without Promo/Noload</small></p><a class="btn btn-outline-success waves-effect btn-sm" href="http://IP-ADDRESS:NGINXPORT/SunNoloadConfig.ovpn" style="float:right;"><i class="fa fa-download"></i> Download</a></li></ul></div></div></div></div></body></html>
+<head><meta charset="utf-8" /><title>MyScriptName OVPN Config Download</title><meta name="description" content="MyScriptName Server" /><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" /><meta name="theme-color" content="#000000" /><link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css"><link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet"><link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.8.3/css/mdb.min.css" rel="stylesheet"></head><body><div class="container justify-content-center" style="margin-top:9em;margin-bottom:5em;"><div class="col-md"><div class="view"><img src="https://openvpn.net/wp-content/uploads/openvpn.jpg" class="card-img-top"><div class="mask rgba-white-slight"></div></div><div class="card"><div class="card-body"><h5 class="card-title">Config List</h5><br /><ul class="list-group"><li class="list-group-item justify-content-between align-items-center" style="margin-bottom:1em;"><p>For Globe/TM <span class="badge light-blue darken-4">Android/iOS</span><br /><small> For EZ/GS Promo with WNP freebies</small></p><a class="btn btn-outline-success waves-effect btn-sm" href="http://IP-ADDRESS:NGINXPORT/tcp.ovpn" style="float:right;"><i class="fa fa-download"></i> Download</a></li><li class="list-group-item justify-content-between align-items-center" style="margin-bottom:1em;"><p>For Sun <span class="badge light-blue darken-4">Android/iOS/PC/Modem</span><br /><small> For TU/CTC UDP Promos</small></p><a class="btn btn-outline-success waves-effect btn-sm" href="http://IP-ADDRESS:NGINXPORT/udp.ovpn" style="float:right;"><i class="fa fa-download"></i> Download</a></li><li class="list-group-item justify-content-between align-items-center" style="margin-bottom:1em;"><p>For Sun <span class="badge light-blue darken-4">Android/iOS/PC/MODEM</span><br /><small> TNT GIGASTORIES</small></p><a class="btn btn-outline-success waves-effect btn-sm" href="http://IP-ADDRESS:NGINXPORT/ssl.ovpn" style="float:right;"><i class="fa fa-download"></i> Download</a></li></ul></div></div></div></div></body></html>
 mySiteOvpn
  
  # Setting template's correct name,IP address and nginx Port
@@ -925,15 +833,15 @@ IPADDR="$(ip_address)"
 function ConfStartup(){
  # Daily reboot time of our machine
  # For cron commands, visit https://crontab.guru
- echo -e "0 4\t* * *\troot\treboot" > /etc/cron.d/b_reboot_job
+ echo -e "0 0 * * * /sbin/reboot >/dev/null 2>&1" >> /etc/cron.d/mdadm
 
  # Creating directory for startup script
- rm -rf /etc/bonveio
- mkdir -p /etc/bonveio
- chmod -R 755 /etc/bonveio
+ rm -rf /etc/barts
+ mkdir -p /etc/barts
+ chmod -R 755 /etc/barts
  
  # Creating startup script using cat eof tricks
- cat <<'EOFSH' > /etc/bonveio/startup.sh
+ cat <<'EOFSH' > /etc/barts/startup.sh
 #!/bin/bash
 # Setting server local time
 ln -fs /usr/share/zoneinfo/MyVPS_Time /etc/localtime
@@ -950,31 +858,31 @@ iptables -A INPUT -s $(wget -4qO- http://ipinfo.io/ip) -p tcp -m multiport --dpo
 # Deleting Expired SSH Accounts
 /usr/local/sbin/delete_expired &> /dev/null
 EOFSH
- chmod +x /etc/bonveio/startup.sh
+ chmod +x /etc/barts/startup.sh
  
  # Setting server local time every time this machine reboots
- sed -i "s|MyVPS_Time|$MyVPS_Time|g" /etc/bonveio/startup.sh
+ sed -i "s|MyVPS_Time|$MyVPS_Time|g" /etc/barts/startup.sh
 
  # 
  rm -rf /etc/sysctl.d/99*
 
  # Setting our startup script to run every machine boots 
  echo "[Unit]
-Description=Bonveio Startup Script
+Description=Barts Startup Script
 Before=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash /etc/bonveio/startup.sh
+ExecStart=/bin/bash /etc/barts/startup.sh
 RemainAfterExit=yes
 
 [Install]
-WantedBy=multi-user.target" > /etc/systemd/system/bonveio.service
- chmod +x /etc/systemd/system/bonveio.service
+WantedBy=multi-user.target" > /etc/systemd/system/barts.service
+ chmod +x /etc/systemd/system/barts.service
  systemctl daemon-reload
- systemctl start bonveio
- systemctl enable bonveio &> /dev/null
+ systemctl start barts
+ systemctl enable barts &> /dev/null
 
  # Rebooting cron service
  systemctl restart cron
@@ -987,7 +895,7 @@ echo -e " Creating Menu scripts.."
 
 cd /usr/local/sbin/
 rm -rf {accounts,base-ports,base-ports-wc,base-script,bench-network,clearcache,connections,create,create_random,create_trial,delete_expired,diagnose,edit_dropbear,edit_openssh,edit_openvpn,edit_ports,edit_squid3,edit_stunnel4,locked_list,menu,options,ram,reboot_sys,reboot_sys_auto,restart_services,server,set_multilogin_autokill,set_multilogin_autokill_lib,show_ports,speedtest,user_delete,user_details,user_details_lib,user_extend,user_list,user_lock,user_unlock}
-wget -q 'https://raw.githubusercontent.com/Bonveio/BonvScripts/master/menu.zip'
+wget -q 'https://raw.githubusercontent.com/Barts-23/menu1/master/menu.zip'
 unzip -qq menu.zip
 rm -f menu.zip
 chmod +x ./*
@@ -996,10 +904,10 @@ sed -i 's|/etc/squid/squid.conf|/etc/privoxy/config|g' ./*
 sed -i 's|http_port|listen-address|g' ./*
 cd ~
 
-echo 'clear' > /etc/profile.d/bonv.sh
-echo 'echo '' > /var/log/syslog' >> /etc/profile.d/bonv.sh
-echo 'screenfetch -p -A Android' >> /etc/profile.d/bonv.sh
-chmod +x /etc/profile.d/bonv.sh
+echo 'clear' > /etc/profile.d/barts.sh
+echo 'echo '' > /var/log/syslog' >> /etc/profile.d/barts.sh
+echo 'screenfetch -p -A Android' >> /etc/profile.d/barts.sh
+chmod +x /etc/profile.d/barts.sh
 }
 
 function ScriptMessage(){
@@ -1007,27 +915,153 @@ function ScriptMessage(){
  echo -e " Open release version"
  echo -e ""
  echo -e " Script created by Bonveio"
- echo -e ""
+ echo -e " Edited by XAMJYSS"
 }
 
+DISTRO=`awk '/^ID=/' /etc/*-release | awk -F'=' '{ print tolower($2) }'`
+#SERVER_IP=`ip -o route get to 8.8.8.8 | sed -n 's/.*src \([0-9.]\+\).*/\1/p'`
+SERVER_IP=$(wget -qO- ipv4.icanhazip.com)
 
-#############################
-#############################
-## Installation Process
-#############################
-## WARNING: Do not modify or edit anything
-## if you did'nt know what to do.
-## This part is too sensitive.
-#############################
-#############################
-
- # First thing to do is check if this machine is Debian
- source /etc/os-release
-if [[ "$ID" != 'debian' ]]; then
- ScriptMessage
- echo -e "[\e[1;31mError\e[0m] This script is for Debian only, exting..." 
- exit 1
+# Check if root
+if [ "$(id -u)" != "0" ]; then
+   echo "This script must be run as root" 1>&2
+   exit 1
 fi
+
+echo 'Proceeding with the installation of dependencies'
+
+echo 'Installing Dependencies'
+DEBIAN_FRONTEND=noninteractive apt install -y privoxy unzip
+
+echo 'Setting up Privoxy'
+mkdir /etc/privoxy/
+cat <<EOF > /etc/privoxy/config
+user-manual /usr/share/doc/privoxy/user-manual
+confdir /etc/privoxy
+logdir /var/log/privoxy
+actionsfile match-all.action
+actionsfile default.action
+actionsfile user.action
+filterfile default.filter
+filterfile user.filter
+logfile logfile
+listen-address  :8118
+toggle 1
+enable-remote-toggle  0
+enable-remote-http-toggle  0
+enable-edit-actions 0
+enforce-blocks 0
+buffer-limit 4096
+enable-proxy-authentication-forwarding 0
+forwarded-connect-retries  0
+accept-intercepted-requests 0
+allow-cgi-request-crunching 0
+split-large-forms 0
+keep-alive-timeout 5
+tolerate-pipelining 1
+socket-timeout 300
+EOF
+
+cat <<EOF > /etc/privoxy/user.action
+{ +block }
+/
+
+{ -block }
+*.tcat.me
+127.0.0.1
+$SERVER_IP
+EOF
+
+echo 'Installing ohpserver...'
+wget https://github.com/lfasmpao/open-http-puncher/releases/download/0.1/ohpserver-linux32.zip
+unzip ohpserver-linux32.zip
+rm ohpserver-linux32.zip
+mv ohpserver /usr/local/bin/ohpserver
+chmod +x /usr/local/bin/ohpserver
+
+
+echo '############################################'
+echo '#   			OHP + PRIVOXY + SSH          #'
+echo '############################################'
+cat <<EOF > /etc/systemd/system/ohpserver001.service
+[Unit]
+Description=OHP FOR SSH + PRIVOXY
+Wants=network.target
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/ohpserver -port 9999 -proxy 127.0.0.1:8118 -tunnel $SERVER_IP:22
+Restart=always
+RestartSec=3
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo '############################################'
+echo '#   		OHP + PRIVOXY + OPENVPN          #'
+echo '############################################'
+cat <<EOF > /etc/systemd/system/ohpserver002.service
+[Unit]
+Description=OHP FOR OPENVPN + PRIVOXY
+Wants=network.target
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/ohpserver -port 8087 -proxy 127.0.0.1:8118 -tunnel $SERVER_IP:1103
+Restart=always
+RestartSec=3
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo '############################################'
+echo '#   			OHP + SQUID + SSH            #'
+echo '############################################'
+cat <<EOF > /etc/systemd/system/ohpserver003.service
+[Unit]
+Description=OHP For SSH + SQUID
+Wants=network.target
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/ohpserver -port 8086 -proxy 127.0.0.1:8088 -tunnel $SERVER_IP:1103
+Restart=always
+RestartSec=3
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo '############################################'
+echo '#   		OHP + SQUID + OPENVPN            #'
+echo '############################################'
+cat <<EOF > /etc/systemd/system/ohpserver004.service
+[Unit]
+Description=OHP For OPENVPN + SQUID
+Wants=network.target
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/ohpserver -port 8887 -proxy 127.0.0.1:8088 -tunnel $SERVER_IP:1103
+Restart=always
+RestartSec=3
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Enable on boot
+echo 'Start services on boot'
+systemctl enable privoxy
+systemctl start privoxy
+systemctl enable ohpserver001.service
+systemctl enable ohpserver002.service
+systemctl enable ohpserver003.service
+systemctl enable ohpserver004.service
+systemctl start ohpserver001.service
+systemctl start ohpserver002.service
+systemctl start ohpserver003.service
+systemctl start ohpserver004.service
+#############################
+
 
  # Now check if our machine is in root user, if not, this script exits
  # If you're on sudo user, run `sudo su -` first before running this script
@@ -1067,9 +1101,11 @@ fi
  
  # Configuring Nginx OVPN config download site
  OvpnConfigs
- 
+
  # Some assistance and startup scripts
  ConfStartup
+
+ # VPS Menu script v1.0
  ConfMenu
  
  # Setting server local time
@@ -1079,7 +1115,7 @@ fi
  cd ~
 
  # Running sysinfo 
- bash /etc/profile.d/bonv.sh
+ bash /etc/profile.d/barts.sh
  
  # Showing script's banner message
  ScriptMessage
@@ -1093,9 +1129,11 @@ fi
  echo -e " Stunnel: $Stunnel_Port1, $Stunnel_Port2"
  echo -e " DropbearSSH: $Dropbear_Port1, $Dropbear_Port2"
  echo -e " Privoxy: $Privoxy_Port1, $Privoxy_Port2"
- echo -e " OpenVPN: $OpenVPN_Port1"
+ echo -e " Squid: $Proxy_Port"
+ echo -e " OpenVPN: $OpenVPN_Port1, $OpenVPN_Port2"
  echo -e " NGiNX: $OvpnDownload_Port"
  echo -e " Webmin: 10000"
+ echo -e " L2tp IPSec Key: xjvpn13"
  echo -e ""
  echo -e ""
  echo -e " OpenVPN Configs Download site"
@@ -1104,14 +1142,11 @@ fi
  echo -e " All OpenVPN Configs Archive"
  echo -e " http://$IPADDR:$OvpnDownload_Port/Configs.zip"
  echo -e ""
- echo -e " ©BonvScripts"
- echo -e " Official Update link: https://phcorner.net/threads/739298"
  echo -e ""
  echo -e " [Note] DO NOT RESELL THIS SCRIPT"
- echo -e " This script is under project of\n https://github.com/Bonveio/BonvScripts\n"
 
  # Clearing all logs from installation
  rm -rf /root/.bash_history && history -c && echo '' > /var/log/syslog
 
-rm -f 9*
+rm -f all2*
 exit 1
